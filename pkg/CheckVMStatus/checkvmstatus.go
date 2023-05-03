@@ -1,15 +1,11 @@
 package CheckVMStatus
 
-import "os/exec"
+import (
+	"os/exec"
+	vmStructs "systemChecker/pkg/structs"
+)
 
-type VM struct {
-	Name         string
-	Address      string
-	Status       bool
-	Dependencies []string
-}
-
-func CheckVMStatus(vm VM) bool {
+func CheckVMStatus(vm vmStructs.VM) bool {
 	cmd := exec.Command("ping", "-c", "1", vm.Address)
 	err := cmd.Run()
 	if err != nil {

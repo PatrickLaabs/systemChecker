@@ -1,71 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"sync"
-
-	CheckVMStatus "systemChecker/pkg/CheckVMStatus"
-
-	"github.com/fsnotify/fsnotify"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
+	configloader "systemChecker/pkg/configloader"
+	configreloader "systemChecker/pkg/configreloader"
+	server "systemChecker/pkg/server"
 )
 
 func main() {
-	viper.SetConfigFile("config.yaml")
-	if err := viper.ReadInConfig(); err != nil {
-		fmt.Printf("Error reading config file, %s", err)
-	}
-
-	var vms []CheckVMStatus.VM
-	if err := viper.UnmarshalKey("vms", &vms); err != nil {
-		fmt.Printf("Unable to decode into struct, %v", err)
-	}
-
-	var mu sync.Mutex
-
-	r := gin.Default()
-	r.LoadHTMLGlob("templates/*.tmpl")
-
-	viper.WatchConfig()
-	viper.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Println("Config file changed:", e.Name)
-		if err := viper.ReadInConfig(); err != nil {
-			fmt.Printf("Error reading config file, %s", err)
-			return
-		}
-
-		var newVms []CheckVMStatus.VM
-		if err := viper.UnmarshalKey("vms", &newVms); err != nil {
-			fmt.Printf("Unable to decode into struct, %v", err)
-			return
-		}
-		fmt.Printf("Reloaded config: %#v\n", newVms)
-
-		mu.Lock()
-		vms = newVms
-		mu.Unlock()
-	})
-
-	// Define routes
-	r.GET("/", func(c *gin.Context) {
-		var wg sync.WaitGroup
-
-		for i := range vms {
-			wg.Add(1)
-			go func(i int) {
-				defer wg.Done()
-				vms[i].Status = CheckVMStatus.CheckVMStatus(vms[i])
-			}(i)
-		}
-
-		wg.Wait()
-
-		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"vms": vms,
-		})
-	})
-
-	r.Run()
+	configloader.Configloader()
+	server.Server()
+	configreloader.Configreloader()
 }
