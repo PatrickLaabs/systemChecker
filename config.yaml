@@ -1,7 +1,14 @@
 vms:
   - name: VM1
     address: 192.168.2.180
+    dependencies:
+      - puppet_users
+      - puppet_ntp
+      - puppet_apache
   - name: VM2
     address: 192.168.2.200
+    dependencies:
+      - puppet_users
+      - puppet_ntp
   - name: VM3
     address: 192.168.2.100

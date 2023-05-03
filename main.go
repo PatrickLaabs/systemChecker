@@ -3,63 +3,69 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os/exec"
+	"sync"
 
+	CheckVMStatus "systemChecker/pkg/CheckVMStatus"
+
+	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
-type VM struct {
-	Name    string
-	Address string
-	Status  bool
-}
-
 func main() {
 	viper.SetConfigFile("config.yaml")
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		fmt.Printf("Error reading config file, %s", err)
 	}
 
-	var vms []VM
-	err = viper.UnmarshalKey("vms", &vms)
-	if err != nil {
+	var vms []CheckVMStatus.VM
+	if err := viper.UnmarshalKey("vms", &vms); err != nil {
 		fmt.Printf("Unable to decode into struct, %v", err)
 	}
 
-	// fmt.Println("VMs:")
-	// for _, vm := range vms {
-	// 	status := checkVMStatus(vm)
-	// 	fmt.Printf("%s (%s): %t\n", vm.Name, vm.Address, status)
-	// }
+	var mu sync.Mutex
 
 	r := gin.Default()
-
 	r.LoadHTMLGlob("templates/*.tmpl")
+
+	viper.WatchConfig()
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		fmt.Println("Config file changed:", e.Name)
+		if err := viper.ReadInConfig(); err != nil {
+			fmt.Printf("Error reading config file, %s", err)
+			return
+		}
+
+		var newVms []CheckVMStatus.VM
+		if err := viper.UnmarshalKey("vms", &newVms); err != nil {
+			fmt.Printf("Unable to decode into struct, %v", err)
+			return
+		}
+		fmt.Printf("Reloaded config: %#v\n", newVms)
+
+		mu.Lock()
+		vms = newVms
+		mu.Unlock()
+	})
 
 	// Define routes
 	r.GET("/", func(c *gin.Context) {
-		// Check status of each VM
-		for i, vm := range vms {
-			vms[i].Status = checkVMStatus(vm)
+		var wg sync.WaitGroup
+
+		for i := range vms {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				vms[i].Status = CheckVMStatus.CheckVMStatus(vms[i])
+			}(i)
 		}
 
-		// Render template with VM information
+		wg.Wait()
+
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"vms": interface{}(vms),
+			"vms": vms,
 		})
 	})
 
-	// Start web server
 	r.Run()
-}
-
-func checkVMStatus(vm VM) bool {
-	cmd := exec.Command("ping", "-c", "1", vm.Address)
-	err := cmd.Run()
-	if err != nil {
-		return false
-	}
-	return true
 }
