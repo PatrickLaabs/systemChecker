@@ -29,7 +29,7 @@ func main() {
 	}
 
 	type vmData struct {
-		Status       bool
+		Status       string
 		Dependencies []string
 	}
 
@@ -41,7 +41,9 @@ func main() {
 
 	r.GET("/", func(c *gin.Context) {
 		vmStatus := make(map[string]vmData)
+		log.Println("Looping over VM Addresses...")
 		for _, address := range vmAddresses {
+			log.Printf("Checking VM status for %s...", address)
 			status := CheckVMStatus(address, 5*time.Second)
 			dependencies, ok := config.Dependencies[address]
 			if !ok {
@@ -49,6 +51,7 @@ func main() {
 			}
 			vmStatus[address] = vmData{Status: status, Dependencies: dependencies}
 		}
+		log.Println("Finished looping over VM addresses.")
 
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
 			"vmStatus": vmStatus,
@@ -57,21 +60,21 @@ func main() {
 
 	r.Static("/static", "./static")
 
-	r.LoadHTMLGlob("templates/*")
+	r.LoadHTMLGlob("templates/*.tmpl")
 
 	if err := r.Run(":8080"); err != nil {
 		fmt.Println("Error starting server:", err)
 	}
 }
 
-func CheckVMStatus(address string, timeout time.Duration) bool {
+func CheckVMStatus(address string, timeout time.Duration) string {
 	conn, err := net.DialTimeout("tcp", address+":22", timeout)
 	if err != nil {
 		log.Printf("Error checking VM Status for %s: %s", address, err)
-		return false
+		return "offline"
 	}
 	defer conn.Close()
-	return true
+	return "online"
 }
 
 func ternary(condition bool, trueValue, falseValue interface{}) interface{} {
