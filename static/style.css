@@ -1,0 +1,30 @@
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  
+  .vm-status {
+    display: flex;
+    align-items: center;
+  }
+  
+  .vm-name {
+    margin-right: 10px;
+    font-weight: bold;
+  }
+  
+  .vm-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+  
+  .vm-dot.up {
+    background-color: green;
+  }
+  
+  .vm-dot.down {
+    background-color: red;
+  }
+  
