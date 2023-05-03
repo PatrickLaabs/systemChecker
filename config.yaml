@@ -1,0 +1,7 @@
+vms:
+  - name: VM1
+    address: 192.168.2.180
+  - name: VM2
+    address: 192.168.2.200
+  - name: VM3
+    address: 192.168.2.100

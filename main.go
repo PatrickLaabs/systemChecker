@@ -2,106 +2,64 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net"
 	"net/http"
-	"os"
-	"text/template"
-	"time"
+	"os/exec"
 
-	"github.com/BurntSushi/toml"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
-type Config struct {
-	VMAddresses  map[string]string   `toml:"vm_addresses"`
-	Dependencies map[string][]string `toml:"dependencies"`
-}
-
-func (c *Config) LoadFromFile(path string) error {
-	_, err := toml.DecodeFile(path, c)
-	if err != nil {
-		log.Printf("Error decoding file: %s", err.Error())
-		return err
-	}
-	log.Printf("Successfully decoded file: %s", path)
-	return nil
+type VM struct {
+	Name    string
+	Address string
+	Status  bool
 }
 
 func main() {
-	var config Config
-	log.Printf("config: %+v\n", config)
-	if _, err := toml.DecodeFile("config.toml", &config); err != nil {
-		log.Fatal(err)
+	viper.SetConfigFile("config.yaml")
+	err := viper.ReadInConfig()
+	if err != nil {
+		fmt.Printf("Error reading config file, %s", err)
 	}
 
-	var vmAddresses []string
-	for _, address := range config.VMAddresses {
-		vmAddresses = append(vmAddresses, address)
+	var vms []VM
+	err = viper.UnmarshalKey("vms", &vms)
+	if err != nil {
+		fmt.Printf("Unable to decode into struct, %v", err)
 	}
 
-	type vmData struct {
-		Status       string
-		Dependencies []string
-	}
+	// fmt.Println("VMs:")
+	// for _, vm := range vms {
+	// 	status := checkVMStatus(vm)
+	// 	fmt.Printf("%s (%s): %t\n", vm.Name, vm.Address, status)
+	// }
 
 	r := gin.Default()
 
-	r.SetFuncMap(template.FuncMap{
-		"ternary": func(b bool, t, f interface{}) interface{} {
-			if b {
-				return t
-			}
-			return f
-		},
-	})
+	r.LoadHTMLGlob("templates/*.tmpl")
 
+	// Define routes
 	r.GET("/", func(c *gin.Context) {
-		vmStatus := make(map[string]vmData)
-		log.Println("Looping over VM Addresses...")
-		for _, address := range vmAddresses {
-			log.Printf("Checking VM status for %s...", address)
-			status := CheckVMStatus(address, 5*time.Second)
-			dependencies, ok := config.Dependencies[address]
-			if !ok {
-				dependencies = []string{}
-			}
-			vmStatus[address] = vmData{Status: status, Dependencies: dependencies}
+		// Check status of each VM
+		for i, vm := range vms {
+			vms[i].Status = checkVMStatus(vm)
 		}
-		log.Println("Finished looping over VM addresses.")
 
+		// Render template with VM information
 		c.HTML(http.StatusOK, "index.tmpl", gin.H{
-			"vmStatus": vmStatus,
+			"vms": interface{}(vms),
 		})
 	})
 
-	r.Static("/static", "static")
-
-	r.LoadHTMLGlob("templates/*.tmpl")
-
-	if err := r.Run(":8080"); err != nil {
-		fmt.Println("Error starting server:", err)
-		os.Exit(1)
-	}
+	// Start web server
+	r.Run()
 }
 
-func CheckVMStatus(address string, timeout time.Duration) string {
-	log.Printf("Checking VM status for %s", address)
-	conn, err := net.DialTimeout("tcp", address+":22", timeout)
+func checkVMStatus(vm VM) bool {
+	cmd := exec.Command("ping", "-c", "1", vm.Address)
+	err := cmd.Run()
 	if err != nil {
-		log.Printf("Error checking VM Status for %s: %s", address, err)
-		return "offline"
+		return false
 	}
-	defer conn.Close()
-	log.Printf("VM %s is online", address)
-	return "online"
-}
-
-func ternary(condition bool, trueValue, falseValue interface{}) interface{} {
-	if condition {
-		log.Printf("Condition was true, returning %v", trueValue)
-		return trueValue
-	}
-	log.Printf("Condition was false, returning %v", falseValue)
-	return falseValue
+	return true
 }

@@ -1,39 +1,53 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>VM Status</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="./static/style.css">
+  <meta charset="utf-8">
+  <title>VM Status</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 8px;
+    }
+
+    th {
+      background-color: #4CAF50;
+      color: white;
+    }
+
+    tr.Up {
+      background-color: #8BC34A;
+    }
+
+    tr.Down {
+      background-color: #FF5252;
+    }
+  </style>
 </head>
+
 <body>
-<div class="container">
-    <h1>VM Status</h1>
-    <hr>
-    <div class="row">
-        {{range $vm, $data := .vmStatus}}
-        <div class="col-md-4 col-sm-6 col-xs-12">
-            <div class="vm-panel panel panel-default">
-                <div class="panel-heading">
-                    <h3 class="panel-title">{{$vm}}</h3>
-                </div>
-                <div class="panel-body">
-                    <div class="vm-status {{$data.Status | ternary "online" "offline"}}"></div>
-                    <p><b>Status:</b> {{$data.Status | ternary "Online" "Offline"}}</p>
-                    {{ if $data.Dependencies }}
-                    <p><b>Dependencies:</b></p>
-                    <ul>
-                        {{ range $data.Dependencies }}
-                        <li>{{.}}</li>
-                        {{ end }}
-                    </ul>
-                    {{ end }}
-                </div>
-            </div>
-        </div>
-        {{end}}
-    </div>
-</div>
+  <h1>VM Status</h1>
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Address</th>
+      <th>Status</th>
+    </tr>
+    {{range $vm := .vms}}
+    <tr class="{{if $vm.Status}}Up{{else}}Down{{end}}">
+      <td>{{$vm.Name}}</td>
+      <td>{{$vm.Address}}</td>
+      <td>{{if $vm.Status}}Up{{else}}Down{{end}}</td>
+    </tr>
+    {{end}}
+  </table>
 </body>
+
 </html>
