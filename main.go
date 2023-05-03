@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	CheckVMStatus "systemChecker/pkg/CheckVMStatus"
+	vmStructs "systemChecker/pkg/structs"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ func main() {
 		fmt.Printf("Error reading config file, %s", err)
 	}
 
-	var vms []CheckVMStatus.VM
+	var vms []vmStructs.VM
 	if err := viper.UnmarshalKey("vms", &vms); err != nil {
 		fmt.Printf("Unable to decode into struct, %v", err)
 	}
@@ -36,7 +37,7 @@ func main() {
 			return
 		}
 
-		var newVms []CheckVMStatus.VM
+		var newVms []vmStructs.VM
 		if err := viper.UnmarshalKey("vms", &newVms); err != nil {
 			fmt.Printf("Unable to decode into struct, %v", err)
 			return
@@ -67,5 +68,7 @@ func main() {
 		})
 	})
 
-	r.Run()
+	if err := r.Run(":8080"); err != nil {
+		fmt.Println(err)
+	}
 }
