@@ -5,6 +5,7 @@ vms:
       - puppet_users
       - puppet_ntp
       - puppet_apache
+      - puppet_mysql
   - name: VM2
     address: 192.168.2.200
     dependencies:
@@ -12,3 +13,6 @@ vms:
       - puppet_ntp
   - name: VM3
     address: 192.168.2.100
+    dependencies:
+      - puppet_users
+      - puppet_ntp
